@@ -1,8 +1,9 @@
 const CampusConfig = require('../models/CampusConfig');
 
 exports.chat = async (req, res) => {
+  const userMessage = req.body.message || "";  // ✅ SAFE COPY
   try {
-    const { message, history = [] } = req.body;
+    const { history = [] } = req.body;
 
     // Fetch campus config for AI context
     let config = await CampusConfig.findOne();
@@ -32,6 +33,7 @@ Rules:
 - Format responses clearly with bullet points when listing documents`;
 
     const apiKey = process.env.GEMINI_API_KEY;
+
     
     if (!apiKey || apiKey === 'your_gemini_api_key_from_google_ai_studio') {
       // Fallback mock response when no API key
@@ -43,7 +45,7 @@ Rules:
         'hours': `**Office Hours:**\nMon-Fri: 9:00 AM – 5:00 PM\nLunch: 1:00 PM – 2:00 PM\nSaturday: 9:00 AM – 1:00 PM`,
       };
 
-      const lowerMsg = message.toLowerCase();
+      const lowerMsg = userMessage.toLowerCase();
       let reply = `I'm CampusBot! 👋 I can help you with questions about certificates, ID cards, and admin processes.\n\nTry asking:\n• "What documents do I need for a Bonafide Certificate?"\n• "How long does a TC take?"\n• "What are office hours?"`;
       
       for (const [key, response] of Object.entries(mockResponses)) {
@@ -57,9 +59,17 @@ Rules:
     }
 
     // Real Gemini API call
+    // const { GoogleGenerativeAI } = require('@google/generative-ai');
+    // const genAI = new GoogleGenerativeAI(apiKey);
+    // const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+
     const { GoogleGenerativeAI } = require('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+const genAI = new GoogleGenerativeAI(apiKey);
+
+// const models = await genAI.listModels();
+const model = genAI.getGenerativeModel({
+  model: 'gemini-pro'
+});
 
     const chat = model.startChat({
       history: history.map(h => ({
@@ -71,17 +81,68 @@ Rules:
 
     // Prepend system context to first message
     const fullMessage = history.length === 0
-      ? `[System: ${systemPrompt}]\n\nStudent question: ${message}`
-      : message;
+      ? `[System: ${systemPrompt}]\n\nStudent question: ${userMessage}`
+      : userMessage;
 
     const result = await chat.sendMessage(fullMessage);
     const reply = result.response.text();
 
     res.json({ success: true, reply });
   } catch (error) {
-    console.error('Chat error:', error);
-    res.status(500).json({ success: false, message: 'AI service temporarily unavailable. Please try again.' });
+  console.error('Chat error:', error);
+
+  const lowerMsg = userMessage.toLowerCase(); // ✅ now safe
+
+  let reply = `I'm CampusBot 👋
+
+I can help with:
+• Certificates
+• Documents
+• Office info
+
+Try asking:
+"Bonafide certificate documents"`;
+
+  if (lowerMsg.includes('bonafide')) {
+    reply = `For a **Bonafide Certificate**, you need:
+• Student ID
+• Fee receipt
+
+Processing time: **2-3 days**`;
+  } 
+  else if (lowerMsg.includes('tc')) {
+    reply = `For a **Transfer Certificate**, you need:
+• Fee clearance
+• Library NOC
+
+Processing time: **5-7 days**`;
+  } 
+  else if (lowerMsg.includes('id card')) {
+    reply = `For **ID Card replacement**:
+• Passport photo
+• Fee receipt
+
+Processing time: **3-5 days**`;
+  } 
+  else if (lowerMsg.includes('noc')) {
+    reply = `For **NOC**:
+• Application letter
+• HOD approval
+
+Processing time: **1-2 days**`;
+  } 
+  else if (lowerMsg.includes('hours')) {
+    reply = `**Office Hours:**
+Mon-Fri: 9 AM – 5 PM
+Sat: 9 AM – 1 PM`;
   }
+
+  return res.json({
+    success: true,
+    reply,
+    fallback: true
+  });
+}
 };
 
 exports.updateConfig = async (req, res) => {
