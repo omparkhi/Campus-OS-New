@@ -28,8 +28,24 @@ const io = new Server(server, {
 app.set('io', io);
 
 // Middleware
+// app.use(cors({
+//   origin: process.env.CLIENT_URL || 'http://localhost:3000',
+//   credentials: true
+// }));
+
+const allowedOrigins = [
+  "https://campus-os-bpdcgexln-om-parkhi.vercel.app",
+  "https://campus-os-new.vercel.app"
+];
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS blocked"));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
