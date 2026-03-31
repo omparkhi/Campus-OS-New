@@ -14,7 +14,7 @@ const useSocket = (eventHandlers = {}) => {
 
     // Create singleton socket
     if (!socketInstance || !socketInstance.connected) {
-      socketInstance = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000', {
+      socketInstance = io(process.env.REACT_APP_SOCKET_URL || 'https://campus-os-m9xl.onrender.com', {
         auth: { token },
         transports: ['websocket', 'polling'],
         reconnection: true,
